@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>GPA計算ツール</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .form-section { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .form-group { margin-bottom: 15px; }
+        label { display: inline-block; width: 120px; font-weight: bold; }
+        input[type="text"], input[type="number"], select { padding: 5px; width: 220px; }
+        .btn { padding: 8px 15px; border: none; cursor: pointer; border-radius: 3px; color: white; }
+        .btn-primary { background-color: #005a9c; }
+        .btn-primary:hover { background-color: #004070; }
+        .btn-danger { background-color: #cc0000; }
+        .btn-danger:hover { background-color: #990000; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .text-center { text-align: center; }
+        .results { margin-top: 30px; padding: 15px; background-color: #eef7ff; border-radius: 5px; border: 1px solid #bce0fd; }
+        .results h3 { margin-top: 0; color: #004070; }
+        .excluded { color: #aaa; background-color: #fafafa; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; }
+        .search-box { background-color: #fffae6; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ffe8a1; }
+        .search-box label { width: auto; margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>成績入力フォーム</h2>
+    
+    <div class="form-section">
+        <div class="search-box">
+            <strong>🔍 開講時期から科目を検索・自動入力</strong><br><br>
+            <label>時期で絞り込み:</label>
+            <select id="termSelect" onchange="updateCourseDropdown()">
+                <option value="">-- 選択してください --</option>
+                <option value="1年前期">1年前期</option>
+                <option value="1年後期">1年後期</option>
+                <option value="1年通期">1年通期</option>
+                <option value="2年前期">2年前期</option>
+                <option value="2年後期">2年後期</option>
+                <option value="2年通期">2年通期</option>
+                <option value="3年前期">3年前期</option>
+            </select>
+            <br><br>
+            <label>対象科目:</label>
+            <select id="courseSelect" onchange="fillCourseName()">
+                <option value="">-- 先に時期を選んでください --</option>
+            </select>
+            <small style="margin-left:10px; color:#555;">※選ぶと下の「科目名」に自動入力されます</small>
+        </div>
+
+        <div class="form-group">
+            <label>科目名:</label>
+            <input type="text" id="courseName" placeholder="例: 薬学概論Ⅰ">
+        </div>
+        <div class="form-group">
+            <label>単位数:</label>
+            <input type="number" id="credits" min="1" value="2">
+        </div>
+        <div class="form-group">
+            <label>点数 (0-100):</label>
+            <input type="number" id="score" min="0" max="100" placeholder="例: 85">
+        </div>
+        <div class="form-group">
+            <label>科目区分:</label>
+            <select id="category">
+                <option value="specialized_compulsory">専門科目 (必修)</option>
+                <option value="specialized_elective">専門科目 (選択)</option>
+                <option value="liberal">教養科目</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="addCourse()">科目を追加して計算</button>
+    </div>
+
+    <div class="results">
+        <h3>GPA 計算結果</h3>
+        <p><strong>教養科目 GPA:</strong> <span id="gpaLiberal">0.00</span></p>
+        <p><strong>専門科目(必修) GPA:</strong> <span id="gpaCompulsory">0.00</span></p>
+        <p><strong>専門科目(選択) GPA:</strong> <span id="gpaElective">0.00</span> <small>(※成績上位14単位分のみ計算)</small></p>
+        <hr>
+        <p><strong>総合 GPA:</strong> <span id="gpaTotal">0.00</span> <small>(※選択科目は上位14単位分のみ合算)</small></p>
+    </div>
+
+    <div class="header-flex">
+        <h2>登録済みの科目</h2>
+        <button class="btn btn-danger" onclick="resetAllData()">全データをリセット</button>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center">計算対象</th>
+                <th>科目名</th>
+                <th>区分</th>
+                <th>単位数</th>
+                <th>点数</th>
+                <th>評点</th>
+                <th class="text-center">操作</th>
+            </tr>
+        </thead>
+        <tbody id="courseList">
+            </tbody>
+    </table>
+
+    <script>
+        // --- 提供いただいた科目データベース ---
+        const courseDatabase = {
+            "1年前期": ["薬学概論Ⅰ", "薬学有機化学Ⅰ", "薬品分析化学", "生薬学Ⅰ"],
+            "1年後期": ["基礎生物化学", "薬学有機化学Ⅱ", "機能形態学Ⅰ", "薬学物理化学Ⅰ"],
+            "1年通期": ["AMEC", "PBL"],
+            "2年前期": ["機能形態学Ⅱ", "製剤学Ⅰ", "薬剤学Ⅰ", "有機反応化学Ⅰ", "有機反応化学Ⅱ", "薬学無機化学", "薬学概論Ⅱ", "環境衛生学", "生物薬品化学Ⅰ", "薬理学Ⅰ", "薬学英語Ⅰ", "薬学英語Ⅱ", "地域医療学基礎", "薬学物理化学Ⅱ"],
+            "2年後期": ["製剤学Ⅱ", "薬学物理化学Ⅲ", "衛生化学", "薬理学Ⅱ", "生物統計学Ⅰ", "生物統計学Ⅱ", "有機反応化学Ⅲ", "薬剤学Ⅱ", "生薬学Ⅱ", "生物薬品化学Ⅱ", "微生物感染症学", "細胞生物学Ⅰ", "物理系実習Ⅰ", "物理系実習Ⅱ", "化学系実習Ⅰ", "化学系実習Ⅱ", "化学系実習Ⅲ"],
+            "2年通期": ["先端薬科学"],
+            "3年前期": ["薬学英語Ⅲ", "有機化学演習", "免疫学", "医薬品情報学", "病態生化学", "構造生物学", "有機反応化学Ⅳ", "薬理学Ⅲ", "臨床薬理学Ⅰ", "薬学英語Ⅳ", "医薬品代謝学", "臨床薬理学Ⅱ"]
+        };
+
+        let courses = [];
+
+        // ページ読み込み時に保存されたデータを復元
+        window.onload = function() {
+            const savedData = localStorage.getItem('gpa_courses_data');
+            if (savedData) {
+                courses = JSON.parse(savedData);
+                courses.forEach(c => {
+                    if (c.isIncluded === undefined) c.isIncluded = true;
+                });
+                updateView();
+            }
+        };
+
+        // --- 検索・自動入力機能 ---
+        function updateCourseDropdown() {
+            const term = document.getElementById('termSelect').value;
+            const courseSelect = document.getElementById('courseSelect');
+            
+            // ドロップダウンを初期化
+            courseSelect.innerHTML = '<option value="">-- 科目を選択してください --</option>';
+            
+            if (term && courseDatabase[term]) {
+                courseDatabase[term].forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course;
+                    option.textContent = course;
+                    courseSelect.appendChild(option);
+                });
+            } else if (!term) {
+                courseSelect.innerHTML = '<option value="">-- 先に時期を選んでください --</option>';
+            }
+        }
+
+        function fillCourseName() {
+            const courseSelect = document.getElementById('courseSelect');
+            if (courseSelect.value) {
+                document.getElementById('courseName').value = courseSelect.value;
+            }
+        }
+
+        // --- データ管理・計算機能 ---
+        function saveData() {
+            localStorage.setItem('gpa_courses_data', JSON.stringify(courses));
+        }
+
+        function resetAllData() {
+            if (confirm("登録されているすべての成績データを削除し、完全にリセットしますか？\n（この操作は取り消せません）")) {
+                courses = [];
+                localStorage.removeItem('gpa_courses_data');
+                updateView();
+            }
+        }
+
+        function getGradePoint(score) {
+            if (score >= 90) return 4.0;
+            if (score >= 80) return 3.0;
+            if (score >= 70) return 2.0;
+            if (score >= 60) return 1.0;
+            return 0.0;
+        }
+
+        function getCategoryName(val) {
+            if (val === 'liberal') return '教養科目';
+            if (val === 'specialized_compulsory') return '専門科目(必修)';
+            if (val === 'specialized_elective') return '専門科目(選択)';
+            return '';
+        }
+
+        function addCourse() {
+            const name = document.getElementById('courseName').value || '無名科目';
+            const credits = parseFloat(document.getElementById('credits').value);
+            const score = parseFloat(document.getElementById('score').value);
+            const category = document.getElementById('category').value;
+
+            if (isNaN(credits) || isNaN(score)) {
+                alert("単位数と点数を正しく入力してください。");
+                return;
+            }
+
+            const gradePoint = getGradePoint(score);
+
+            courses.push({ name, credits, score, gradePoint, category, isIncluded: true });
+            
+            // 入力フォームのリセット
+            document.getElementById('courseName').value = '';
+            document.getElementById('score').value = '';
+            document.getElementById('courseSelect').value = ''; // 検索側のドロップダウンもリセット
+            
+            updateView();
+        }
+
+        function deleteCourse(index) {
+            courses.splice(index, 1);
+            updateView();
+        }
+
+        function toggleInclude(index) {
+            courses[index].isIncluded = !courses[index].isIncluded;
+            updateView();
+        }
+
+        function updateView() {
+            renderTable();
+            calculateGPAs();
+            saveData();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('courseList');
+            tbody.innerHTML = '';
+            courses.forEach((course, index) => {
+                const tr = document.createElement('tr');
+                if (!course.isIncluded) tr.className = 'excluded';
+
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <input type="checkbox" ${course.isIncluded ? 'checked' : ''} onchange="toggleInclude(${index})">
+                    </td>
+                    <td>${course.name}</td>
+                    <td>${getCategoryName(course.category)}</td>
+                    <td>${course.credits}</td>
+                    <td>${course.score}</td>
+                    <td>${course.gradePoint.toFixed(1)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-danger" style="padding: 3px 8px;" onclick="deleteCourse(${index})">削除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function calcStandardGPA(filteredCourses) {
+            let totalCredits = 0;
+            let totalPoints = 0;
+            filteredCourses.forEach(c => {
+                totalCredits += c.credits;
+                totalPoints += c.credits * c.gradePoint;
+            });
+            return { gpa: totalCredits > 0 ? totalPoints / totalCredits : 0, credits: totalCredits, points: totalPoints };
+        }
+
+        function calcTopElectiveGPA(electives, maxCredits) {
+            const sorted = [...electives].sort((a, b) => b.gradePoint - a.gradePoint);
+            let usedCredits = 0;
+            let totalPoints = 0;
+
+            for (let c of sorted) {
+                if (usedCredits >= maxCredits) break;
+                let creditsToTake = Math.min(c.credits, maxCredits - usedCredits);
+                usedCredits += creditsToTake;
+                totalPoints += creditsToTake * c.gradePoint;
+            }
+            
+            return { gpa: usedCredits > 0 ? totalPoints / usedCredits : 0, credits: usedCredits, points: totalPoints };
+        }
+
+        function calculateGPAs() {
+            const activeCourses = courses.filter(c => c.isIncluded);
+
+            const liberal = activeCourses.filter(c => c.category === 'liberal');
+            const compulsory = activeCourses.filter(c => c.category === 'specialized_compulsory');
+            const elective = activeCourses.filter(c => c.category === 'specialized_elective');
+
+            const libData = calcStandardGPA(liberal);
+            const compData = calcStandardGPA(compulsory);
+            const eleData = calcTopElectiveGPA(elective, 14);
+
+            const totalValidCredits = libData.credits + compData.credits + eleData.credits;
+            const totalValidPoints = libData.points + compData.points + eleData.points;
+            const totalGPA = totalValidCredits > 0 ? totalValidPoints / totalValidCredits : 0;
+
+            document.getElementById('gpaLiberal').innerText = libData.gpa.toFixed(2);
+            document.getElementById('gpaCompulsory').innerText = compData.gpa.toFixed(2);
+            document.getElementById('gpaElective').innerText = eleData.gpa.toFixed(2);
+            document.getElementById('gpaTotal').innerText = totalGPA.toFixed(2);
+        }
+    </script>
+</body>
+</html>
