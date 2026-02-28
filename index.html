@@ -24,6 +24,7 @@
         .header-flex { display: flex; justify-content: space-between; align-items: center; }
         .search-box { background-color: #fffae6; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ffe8a1; }
         .search-box label { width: auto; margin-right: 10px; }
+        .dept-box { background-color: #e6f7ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #91d5ff; }
     </style>
 </head>
 <body>
@@ -31,6 +32,14 @@
     <h2>成績入力フォーム</h2>
     
     <div class="form-section">
+        <div class="dept-box form-group">
+            <label>所属学科:</label>
+            <select id="departmentSelect" onchange="updateView()">
+                <option value="life_science">生命薬科学科 (選択科目は上位14単位)</option>
+                <option value="pharmacy">薬学科 (選択科目は上位10単位)</option>
+            </select>
+        </div>
+
         <div class="search-box">
             <strong>🔍 開講時期から科目を検索・自動入力</strong><br><br>
             <label>時期で絞り込み:</label>
@@ -79,9 +88,9 @@
         <h3>GPA 計算結果</h3>
         <p><strong>教養科目 GPA:</strong> <span id="gpaLiberal">0.00</span></p>
         <p><strong>専門科目(必修) GPA:</strong> <span id="gpaCompulsory">0.00</span></p>
-        <p><strong>専門科目(選択) GPA:</strong> <span id="gpaElective">0.00</span> <small>(※成績上位14単位分のみ計算)</small></p>
+        <p><strong>専門科目(選択) GPA:</strong> <span id="gpaElective">0.00</span> <small id="electiveNote1">(※成績上位14単位分のみ計算)</small></p>
         <hr>
-        <p><strong>総合 GPA:</strong> <span id="gpaTotal">0.00</span> <small>(※選択科目は上位14単位分のみ合算)</small></p>
+        <p><strong>総合 GPA:</strong> <span id="gpaTotal">0.00</span> <small id="electiveNote2">(※選択科目は上位14単位分のみ合算)</small></p>
     </div>
 
     <div class="header-flex">
@@ -121,14 +130,22 @@
 
         // ページ読み込み時に保存されたデータを復元
         window.onload = function() {
+            // 学科の復元
+            const savedDept = localStorage.getItem('gpa_department');
+            if (savedDept) {
+                document.getElementById('departmentSelect').value = savedDept;
+            }
+
+            // 成績データの復元
             const savedData = localStorage.getItem('gpa_courses_data');
             if (savedData) {
                 courses = JSON.parse(savedData);
                 courses.forEach(c => {
                     if (c.isIncluded === undefined) c.isIncluded = true;
                 });
-                updateView();
             }
+            // 画面を最新状態に更新
+            updateView();
         };
 
         // --- 検索・自動入力機能 ---
@@ -136,7 +153,6 @@
             const term = document.getElementById('termSelect').value;
             const courseSelect = document.getElementById('courseSelect');
             
-            // ドロップダウンを初期化
             courseSelect.innerHTML = '<option value="">-- 科目を選択してください --</option>';
             
             if (term && courseDatabase[term]) {
@@ -161,6 +177,7 @@
         // --- データ管理・計算機能 ---
         function saveData() {
             localStorage.setItem('gpa_courses_data', JSON.stringify(courses));
+            localStorage.setItem('gpa_department', document.getElementById('departmentSelect').value);
         }
 
         function resetAllData() {
@@ -204,7 +221,7 @@
             // 入力フォームのリセット
             document.getElementById('courseName').value = '';
             document.getElementById('score').value = '';
-            document.getElementById('courseSelect').value = ''; // 検索側のドロップダウンもリセット
+            document.getElementById('courseSelect').value = '';
             
             updateView();
         }
@@ -275,6 +292,14 @@
         }
 
         function calculateGPAs() {
+            // 学科による選択科目の上限単位数を決定
+            const department = document.getElementById('departmentSelect').value;
+            const maxElectiveCredits = (department === 'pharmacy') ? 10 : 14;
+
+            // 画面の注釈テキストを更新
+            document.getElementById('electiveNote1').innerText = `(※成績上位${maxElectiveCredits}単位分のみ計算)`;
+            document.getElementById('electiveNote2').innerText = `(※選択科目は上位${maxElectiveCredits}単位分のみ合算)`;
+
             const activeCourses = courses.filter(c => c.isIncluded);
 
             const liberal = activeCourses.filter(c => c.category === 'liberal');
@@ -283,7 +308,7 @@
 
             const libData = calcStandardGPA(liberal);
             const compData = calcStandardGPA(compulsory);
-            const eleData = calcTopElectiveGPA(elective, 14);
+            const eleData = calcTopElectiveGPA(elective, maxElectiveCredits);
 
             const totalValidCredits = libData.credits + compData.credits + eleData.credits;
             const totalValidPoints = libData.points + compData.points + eleData.points;
