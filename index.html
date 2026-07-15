@@ -106,15 +106,6 @@
                 <option value="2年後期">2年後期</option>
                 <option value="2年通期">2年通期</option>
                 <option value="3年前期">3年前期</option>
-                <option value="3年後期">3年後期</option>
-                <option value="3年通期">3年通期</option>
-                <option value="4年前期">4年前期</option>
-                <option value="4年後期">4年後期</option>
-                <option value="4年通期">4年通期</option>
-                <option value="5年前期">5年前期</option>
-                <option value="5年後期">5年後期</option>
-                <option value="6年前期">6年前期</option>
-                <option value="6年後期">6年後期</option>
                 <option value="その他">その他</option>
             </select>
         </div>
@@ -163,14 +154,15 @@
                     <th class="sortable" onclick="sortTable('term')">時期 <span id="sort-term" class="sort-icon"></span></th>
                     <th class="sortable" onclick="sortTable('name')">科目名 <span id="sort-name" class="sort-icon"></span></th>
                     <th class="sortable" onclick="sortTable('category')">区分 <span id="sort-category" class="sort-icon"></span></th>
-                    <th class="sortable" onclick="sortTable('credits')">単位 <span id="sort-icon"></span></th>
+                    <th class="sortable" onclick="sortTable('credits')">単位 <span id="sort-credits" class="sort-icon"></span></th>
                     <th class="sortable" onclick="sortTable('score')">点数 <span id="sort-score" class="sort-icon"></span></th>
                     <th class="sortable" onclick="sortTable('gradePoint')">評点 <span id="sort-gradePoint" class="sort-icon"></span></th>
                     <th class="text-center">操作</th>
                 </tr>
             </thead>
             <tbody id="courseList">
-                </tbody>
+                <!-- 追加された科目がここに表示されます -->
+            </tbody>
         </table>
     </div>
 
@@ -185,7 +177,8 @@
             "3年前期": ["薬学英語Ⅲ", "有機化学演習", "免疫学", "医薬品情報学", "病態生化学", "構造生物学", "有機反応化学Ⅳ", "薬理学Ⅲ", "臨床薬理学Ⅰ", "薬学英語Ⅳ", "医薬品代謝学", "臨床薬理学Ⅱ"]
         };
 
-        const allTerms = ["1年前期", "1年後期", "1年通期", "2年前期", "2年後期", "2年通期", "3年前期", "3年後期", "3年通期", "4年前期", "4年後期", "4年通期", "5年前期", "5年後期", "6年前期", "6年後期", "その他"];
+        // 編集時に使用する時期のリストも3年前期までに変更
+        const allTerms = ["1年前期", "1年後期", "1年通期", "2年前期", "2年後期", "2年通期", "3年前期", "その他"];
 
         let courses = [];
         let editingIndex = -1;
@@ -243,7 +236,6 @@
             const termSelect = document.getElementById('termSelect');
             if (courseSelect.value) {
                 document.getElementById('courseName').value = courseSelect.value;
-                // 自動で入力フォームの「開講時期」も同期させる
                 document.getElementById('inputTerm').value = termSelect.value;
             }
         }
@@ -284,7 +276,6 @@
             const score = parseFloat(document.getElementById('score').value);
             const category = document.getElementById('category').value;
             
-            // 時期が「その他」のままでも、名前からデータベースに存在するかチェックして補完
             if (term === "その他") {
                 const foundTerm = findTermByName(name);
                 if (foundTerm !== "その他") term = foundTerm;
@@ -299,7 +290,6 @@
 
             courses.push({ term, name, credits, score, gradePoint, category, isIncluded: true });
             
-            // フォームリセット
             document.getElementById('courseName').value = '';
             document.getElementById('score').value = '';
             document.getElementById('courseSelect').value = '';
@@ -420,7 +410,6 @@
                 }
 
                 if (editingIndex === index) {
-                    // 編集用の時期プルダウンを生成
                     const termOptionsHtml = allTerms.map(t => 
                         `<option value="${t}" ${course.term === t ? 'selected' : ''}>${t}</option>`
                     ).join('');
