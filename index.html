@@ -57,7 +57,7 @@
             margin-bottom: 16px;
         }
 
-        /* カードレイアウト（白いボックス） */
+        /* カードレイアウト */
         .card { 
             background-color: var(--card-bg); 
             padding: 24px; 
@@ -101,7 +101,6 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }
         
-        /* チェックボックス */
         input[type="checkbox"] { 
             accent-color: var(--primary);
             width: 18px;
@@ -138,17 +137,39 @@
         .btn-edit:hover { background-color: #eff6ff; }
         .btn-sm { padding: 6px 12px; font-size: 0.85rem; margin-right: 4px; }
 
-        /* テーブル */
+        /* テーブル共通 */
         .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); background: #fff; }
         table { border-collapse: collapse; width: 100%; min-width: 750px; background-color: transparent; }
         th, td { padding: 14px 12px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
         th { background-color: #f8fafc; color: var(--text-muted); font-weight: 500; font-size: 0.9rem; }
         tr:last-child td { border-bottom: none; }
         
-        .term-table-wrapper { margin-top: 15px; max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
-        .term-table th { position: sticky; top: 0; background-color: #f8fafc; z-index: 1; box-shadow: 0 1px 0 var(--border-color); }
-        .term-table tr:hover { background-color: #f8fafc; }
+        /* 一括入力用テーブル（スマホ横スクロール対応版） */
+        .term-table-wrapper { margin-top: 15px; max-height: 450px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+        .term-table { width: 100%; min-width: 550px; border-collapse: separate; border-spacing: 0; }
         
+        /* ヘッダーの固定 */
+        .term-table th { position: sticky; top: 0; background-color: #f8fafc; z-index: 1; border-bottom: 1px solid var(--border-color); }
+        
+        /* 【重要】科目名（第1列）を左に固定してスマホでも見失わないようにする設定 */
+        .term-table th:first-child { 
+            left: 0; 
+            z-index: 3; /* topとleft両方の固定なので最前面 */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
+            border-right: 1px solid var(--border-color);
+        }
+        .term-table td:first-child { 
+            position: sticky; 
+            left: 0; 
+            background-color: #fff; 
+            z-index: 2; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
+            border-right: 1px solid var(--border-color);
+        }
+        
+        .term-table tr:hover td { background-color: #f8fafc; }
+        .term-table tr:hover td:first-child { background-color: #f1f5f9; }
+
         th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 20px; transition: background-color 0.2s; }
         th.sortable:hover { background-color: #e2e8f0; color: var(--text-main); }
         .sort-icon { font-size: 10px; color: var(--text-muted); position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
@@ -162,7 +183,6 @@
         
         .manual-input-box { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px dashed var(--border-color); }
 
-        /* 結果エリアの特化スタイル */
         .results p { margin: 8px 0; display: flex; justify-content: space-between; align-items: center; }
         .results hr { border: none; border-top: 1px dashed #cbd5e1; margin: 16px 0; }
         .gpa-value { font-weight: 700; font-size: 1.25rem; color: var(--primary); }
@@ -184,7 +204,6 @@
 
     <h2>📊 GPA計算ツール</h2>
     
-    <!-- 将来的な学科選択の復活に備え、カード全体を非表示（display: none）にしています -->
     <div class="card" id="departmentCard" style="display: none;">
         <div class="form-group" style="margin-bottom: 0;">
             <label>所属学科</label>
@@ -216,7 +235,7 @@
         <div id="termCourseContainer" style="display: none;">
             <div class="info-box">
                 <span style="font-size: 0.85rem; color: #1e3a8a;">
-                    💡 必修科目は自動でチェックが固定されています。履修した選択科目にもチェックを入れ、成績を選んで「登録」を押してください。
+                    💡 必修科目は自動でチェックが固定されています。履修した選択科目にもチェックを入れ、成績を選んで「一括登録」を押してください。
                 </span>
             </div>
             
@@ -224,10 +243,10 @@
                 <table class="term-table">
                     <thead>
                         <tr>
-                            <th class="text-center" style="width: 50px;">履修</th>
-                            <th>科目名</th>
+                            <!-- 履修チェックと科目名を一体化して固定 -->
+                            <th>履修・科目名</th>
                             <th>区分</th>
-                            <th style="width: 80px;">単位</th>
+                            <th style="width: 70px;">単位</th>
                             <th>成績 (秀〜不可)</th>
                         </tr>
                     </thead>
@@ -303,7 +322,6 @@
     <div class="header-flex" style="margin-top: 40px;">
         <h2 style="margin: 0;">📚 登録済みの科目</h2>
         
-        <!-- 一覧の絞り込み用フィルターとリセットボタン -->
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <select id="filterTerm" onchange="renderTable()" style="padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid #cbd5e1; font-weight: 500; min-width: 180px;">
                 <option value="all">すべての時期を表示</option>
@@ -341,28 +359,32 @@
     </div>
 
     <script>
+        // === カリキュラムデータベース（最新版） ===
         const courseDatabase = {
             "1年前期": ["薬学概論Ⅰ", "薬学有機化学Ⅰ", "薬品分析化学", "生薬学Ⅰ"],
             "1年後期": ["基礎生物化学", "薬学有機化学Ⅱ", "機能形態学Ⅰ", "薬学物理化学Ⅰ"],
-            "1年通期": ["AMEC", "PBL"],
-            "2年前期": ["機能形態学Ⅱ", "製剤学Ⅰ", "薬剤学Ⅰ", "有機反応化学Ⅰ", "有機反応化学Ⅱ", "薬学無機化学", "薬学概論Ⅱ", "環境衛生学", "生物薬品化学Ⅰ", "薬理学Ⅰ", "薬学英語Ⅰ", "薬学英語Ⅱ", "地域医療学基礎", "薬学物理化学Ⅱ"],
+            "1年通期": [], // PBL, AMEC 削除
+            "2年前期": ["機能形態学Ⅱ", "製剤学Ⅰ", "薬剤学Ⅰ", "有機反応化学Ⅰ", "有機反応化学Ⅱ", "薬学無機化学", "薬学概論Ⅱ", "機器分析化学", "環境衛生学", "生物薬品化学Ⅰ", "薬理学Ⅰ", "薬学英語Ⅰ", "薬学英語Ⅱ", "薬学物理化学Ⅱ"], // 地域医療学基礎を削除、機器分析化学を追加
             "2年後期": ["製剤学Ⅱ", "薬学物理化学Ⅲ", "衛生化学", "薬理学Ⅱ", "生物統計学Ⅰ", "生物統計学Ⅱ", "有機反応化学Ⅲ", "薬剤学Ⅱ", "生薬学Ⅱ", "生物薬品化学Ⅱ", "微生物感染症学", "細胞生物学Ⅰ", "物理系実習Ⅰ", "物理系実習Ⅱ", "化学系実習Ⅰ", "化学系実習Ⅱ", "化学系実習Ⅲ"],
             "2年通期": ["先端薬科学"],
-            "3年前期": ["薬学英語Ⅲ", "有機化学演習", "免疫学", "医薬品情報学", "病態生化学", "構造生物学", "有機反応化学Ⅳ", "薬理学Ⅲ", "臨床薬理学Ⅰ", "薬学英語Ⅳ", "医薬品代謝学", "臨床薬理学Ⅱ", "細胞生物学Ⅱ", "生物系実習Ⅰ", "生物系実習Ⅱ", "生物系実習Ⅲ", "医療機能系実習Ⅰ", "医療機能系実習Ⅱ", "医療機能系実習Ⅲ"]
+            "3年前期": ["免疫学", "医薬品情報学", "病態生化学", "構造生物学", "薬学英語Ⅲ", "薬学英語Ⅳ", "薬理学Ⅲ", "臨床薬理学Ⅰ", "有機化学演習", "有機反応化学Ⅳ", "医薬品代謝学", "臨床薬理学Ⅱ", "細胞生物学Ⅱ", "生物系実習Ⅰ", "生物系実習Ⅱ", "生物系実習Ⅲ", "医療機能系実習Ⅰ", "医療機能系実習Ⅱ"] // 並び替え適用、医療機能系実習Ⅲ削除
         };
 
+        // 選択科目リスト
         const electiveCourses = [
             "薬学有機化学Ⅱ", "先端薬科学", "環境衛生学", "薬学英語Ⅰ", "薬学英語Ⅱ", "薬学英語Ⅲ", "薬学英語Ⅳ",
             "薬学物理化学Ⅲ", "生物統計学Ⅱ", "薬剤学Ⅱ", "生物薬品化学Ⅱ", "有機化学演習", 
-            "有機反応化学Ⅲ", "有機反応化学Ⅳ", "臨床薬理学Ⅰ", "臨床薬理学Ⅱ", "細胞生物学Ⅱ"
+            "有機反応化学Ⅲ", "有機反応化学Ⅳ", "臨床薬理学Ⅰ", "臨床薬理学Ⅱ", "細胞生物学Ⅱ",
+            "機器分析化学", "製剤学Ⅱ" // 今回追加・変更されたもの
         ];
 
+        // 1単位の科目リスト
         const oneCreditCourses = [
             "薬学概論Ⅰ", "薬学無機化学", "薬学概論Ⅱ", "薬学英語Ⅰ", "薬学英語Ⅱ", 
             "物理系実習Ⅰ", "物理系実習Ⅱ", "化学系実習Ⅰ", "化学系実習Ⅱ", "化学系実習Ⅲ", 
             "薬学英語Ⅲ", "薬学英語Ⅳ", "医薬品情報学", "病態生化学", "臨床薬理学Ⅰ", "臨床薬理学Ⅱ", "有機化学演習",
             "細胞生物学Ⅱ", "生物系実習Ⅰ", "生物系実習Ⅱ", "生物系実習Ⅲ", 
-            "医療機能系実習Ⅰ", "医療機能系実習Ⅱ", "医療機能系実習Ⅲ",
+            "医療機能系実習Ⅰ", "医療機能系実習Ⅱ", // Ⅲは削除
             "生物統計学Ⅰ", "生物統計学Ⅱ"
         ];
 
@@ -381,10 +403,6 @@
         }
 
         window.onload = function() {
-            // 学科選択は一旦「生命薬科学科」固定で非表示にしているため、過去の保存データ(薬学科など)があっても上書きする
-            // 将来的に薬学科の選択を復活させる場合は、以下の2行のコメントアウトを外し、その下の1行を消してください。
-            // const savedDept = localStorage.getItem('gpa_department');
-            // if (savedDept) document.getElementById('departmentSelect').value = savedDept;
             document.getElementById('departmentSelect').value = 'life_science';
 
             const savedData = localStorage.getItem('gpa_courses_data');
@@ -440,18 +458,18 @@
                     const isOneCredit = oneCreditCourses.includes(name) ? 1 : 2;
                     const isElective = electiveCourses.includes(name);
 
-                    // 必修科目は固定（disabledでチェック済み）
                     const checkboxProps = isElective 
                         ? '' 
                         : 'checked disabled style="cursor: not-allowed; opacity: 0.7;"';
 
                     const tr = document.createElement('tr');
+                    // スマホ横スクロール対策: 第1列目にチェックボックスと科目名を一体化
                     tr.innerHTML = `
-                        <td class="text-center">
-                            <input type="checkbox" id="chk_${i}" class="term-course-chk" data-name="${name}" ${checkboxProps}>
-                        </td>
                         <td style="font-weight: 500;">
-                            <label for="chk_${i}" style="cursor: ${isElective ? 'pointer' : 'default'}; width: 100%; display: block; margin: 0; color: ${isElective ? '#334155' : '#3b82f6'};">${name}</label>
+                            <label for="chk_${i}" style="cursor: ${isElective ? 'pointer' : 'default'}; display: flex; align-items: center; gap: 8px; margin: 0; color: ${isElective ? '#334155' : '#3b82f6'}; white-space: nowrap;">
+                                <input type="checkbox" id="chk_${i}" class="term-course-chk" data-name="${name}" ${checkboxProps} style="margin: 0;">
+                                ${name}
+                            </label>
                         </td>
                         <td>
                             <select id="cat_${i}" class="edit-input">
@@ -476,7 +494,7 @@
             });
 
             if (count === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="color:var(--text-muted); padding: 24px;">この時期の科目はすべて登録済みです 🎉</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="color:var(--text-muted); padding: 24px;">この時期の科目はすべて登録済みです 🎉</td></tr>';
                 document.getElementById('addCheckedBtn').style.display = 'none';
             } else {
                 document.getElementById('addCheckedBtn').style.display = 'inline-flex';
@@ -558,8 +576,6 @@
 
         function saveData() {
             localStorage.setItem('gpa_courses_data', JSON.stringify(courses));
-            // 学科選択枠を非表示にして固定しているため、ここでは保存しないか固定値で良い
-            // localStorage.setItem('gpa_department', document.getElementById('departmentSelect').value);
         }
 
         function resetAllData() {
@@ -787,7 +803,6 @@
         }
 
         function calculateGPAs() {
-            // 学科選択枠を非表示にしているため、設定を「生命薬科学科（上限14単位）」で固定
             const maxElectiveCredits = 14;
 
             document.getElementById('electiveNote1').innerText = `(※成績上位${maxElectiveCredits}単位分のみ計算)`;
